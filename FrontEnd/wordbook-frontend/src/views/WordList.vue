@@ -4,6 +4,9 @@
       <button @click="goHome" class="nav-btn">返回主页</button>
       <button @click="goDaySelect" class="nav-btn">返回天数选择</button>
       <button @click="goHardWords" class="nav-btn">顽固单词列表</button>
+      <button @click="toggleExtensions" class="ext-btn">
+        {{ showExtensions ? '隐藏拓展词' : '显示拓展词' }}
+      </button>
     </div>
 
     <h1>
@@ -32,6 +35,7 @@
               {{ chineseSpellMode ? '退出拼写' : '拼写' }}
             </button>
           </th>
+          <th v-if="showExtensions">拓展词</th>
         </tr>
       </thead>
       <tbody>
@@ -172,6 +176,49 @@
             </template>
           </td>
           <td v-else class="chinese-hidden">---</td>
+
+          <!-- 拓展词列 -->
+          <td v-if="showExtensions" class="ext-col">
+            <div v-if="getExtensionsByType(item, 'SIMILAR').length" class="ext-group">
+              <span class="ext-tag ext-tag-similar">近</span>
+              <div class="ext-list">
+                <div
+                  v-for="ext in getExtensionsByType(item, 'SIMILAR')"
+                  :key="ext.id"
+                  class="ext-item"
+                >
+                  <span class="speak" title="发音">🔊</span>
+                  <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-if="getExtensionsByType(item, 'RELATED').length" class="ext-group">
+              <span class="ext-tag ext-tag-related">关</span>
+              <div class="ext-list">
+                <div
+                  v-for="ext in getExtensionsByType(item, 'RELATED')"
+                  :key="ext.id"
+                  class="ext-item"
+                >
+                  <span class="speak" title="发音">🔊</span>
+                  <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+                </div>
+              </div>
+            </div>
+            <div v-if="getExtensionsByType(item, 'IDIOM').length" class="ext-group">
+              <span class="ext-tag ext-tag-idiom">惯</span>
+              <div class="ext-list">
+                <div
+                  v-for="ext in getExtensionsByType(item, 'IDIOM')"
+                  :key="ext.id"
+                  class="ext-item"
+                >
+                  <span class="speak" title="发音">🔊</span>
+                  <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+                </div>
+              </div>
+            </div>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -207,6 +254,7 @@ const langLabel = computed(() => (lang.value === 'KO' ? '韩语单词' : '英语
 const words = ref([])
 const loading = ref(false)
 const msg = ref('')
+const showExtensions = ref(false)
 
 // 状态变量
 const wordVisible = ref(true)
@@ -238,7 +286,13 @@ const fetchWords = async () => {
   msg.value = ''
   try {
     const resp = await fetch(`/api/words/day/${day.value}?lang=${lang.value}`)
-    words.value = await resp.json()
+    const data = await resp.json()
+    words.value = Array.isArray(data)
+      ? data.map((w) => ({
+          ...w,
+          extensions: Array.isArray(w.extensions) ? w.extensions : []
+        }))
+      : []
     resetState()
     await fetchHardList()
   } catch {
@@ -306,6 +360,9 @@ function toggleChineseSpell() {
   chineseSpelling.value = Array(words.value.length).fill(chineseSpellMode.value)
   chineseWrong.value = Array(words.value.length).fill(false)
   if (chineseSpellMode.value) setTimeout(() => focusInput('chinese', 0), 50)
+}
+function toggleExtensions() {
+  showExtensions.value = !showExtensions.value
 }
 function focusInput(type, idx) {
   const id = type === 'word' ? `word_input_${idx}` : `chinese_input_${idx}`
@@ -389,6 +446,12 @@ function speak(text) {
   const msg = new window.SpeechSynthesisUtterance(text)
   msg.lang = 'en-US'
   window.speechSynthesis.speak(msg)
+}
+
+// 拓展词
+function getExtensionsByType(item, type) {
+  if (!item || !Array.isArray(item.extensions)) return []
+  return item.extensions.filter((ext) => ext.type === type)
 }
 
 // 顽固单词
@@ -698,5 +761,68 @@ button.toggle-btn:hover {
 .msg {
   margin-top: 14px;
   color: #ffae00;
+}
+.ext-btn {
+  margin-left: auto;
+  padding: 6px 18px;
+  border-radius: 7px;
+  border: 1px solid #1e90ff;
+  color: #1e90ff;
+  background: transparent;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.ext-btn:hover {
+  background: #1e90ff;
+  color: #fff;
+}
+.ext-col {
+  font-size: 13px;
+  color: #cfd8dc;
+}
+.ext-group {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.ext-tag {
+  display: inline-block;
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+}
+.ext-tag-similar {
+  background: #2196f3;
+}
+.ext-tag-related {
+  background: #9c27b0;
+}
+.ext-tag-idiom {
+  background: #ff9800;
+}
+.ext-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ext-item {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  max-width: 250px;
+  word-break: break-all;
+}
+.ext-text {
+  display: inline-block;
+  max-width: 250px;
+  overflow-wrap: break-word;
+}
+.speak {
+  cursor: default;
 }
 </style>

@@ -1,18 +1,28 @@
 package com.bfc.service;
 
+import com.bfc.dto.WordDto;
+import com.bfc.dto.WordExtensionDto;
 import com.bfc.entity.Word;
+import com.bfc.entity.WordExtension;
+import com.bfc.repository.WordExtensionRepository;
 import com.bfc.repository.WordRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class WordServiceImpl {
 
     @Autowired
     private WordRepository wordRepository;
+
+    @Autowired
+    private WordExtensionRepository wordExtensionRepository;
 
     /**
      * 查询所有单词
@@ -33,6 +43,47 @@ public class WordServiceImpl {
      */
     public List<Word> findByDayAndLang(Integer day, String lang) {
         return wordRepository.findByDayAndLang(day, lang);
+    }
+
+    /**
+     * 按 day + lang 查询单词列表，并填充拓展词
+     */
+    public List<WordDto> findDtosByDayAndLang(Integer day, String lang) {
+        List<Word> words = wordRepository.findByDayAndLang(day, lang);
+        if (words.isEmpty()) {
+            return List.of();
+        }
+
+        List<Integer> wordIds = words.stream().map(Word::getId).toList();
+        List<WordExtension> extensions = wordExtensionRepository.findByWordIdIn(wordIds);
+        Map<Integer, List<WordExtension>> extensionMap = extensions.stream()
+                .collect(Collectors.groupingBy(ext -> ext.getWord().getId()));
+
+        return words.stream().map(word -> {
+            WordDto dto = new WordDto();
+            dto.setId(word.getId());
+            dto.setWord(word.getWord());
+            dto.setMeaning(word.getMeaning());
+            dto.setDay(word.getDay());
+            dto.setLang(word.getLang());
+            dto.setCreatedAt(word.getCreatedAt());
+
+            List<WordExtensionDto> extDtos = extensionMap.getOrDefault(word.getId(), List.of())
+                    .stream()
+                    .sorted(Comparator.comparing(ext -> ext.getSortOrder() == null ? 0 : ext.getSortOrder()))
+                    .map(ext -> {
+                        WordExtensionDto extDto = new WordExtensionDto();
+                        extDto.setId(ext.getId());
+                        extDto.setType(ext.getType());
+                        extDto.setTextKor(ext.getTextKor());
+                        extDto.setTextCn(ext.getTextCn());
+                        extDto.setSortOrder(ext.getSortOrder() == null ? 0 : ext.getSortOrder());
+                        return extDto;
+                    })
+                    .toList();
+            dto.setExtensions(extDtos);
+            return dto;
+        }).toList();
     }
 
     /**
