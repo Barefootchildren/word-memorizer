@@ -1,9 +1,11 @@
 package com.bfc.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @Entity
@@ -32,4 +34,8 @@ public class Word {
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "word", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<WordExtension> extensions;
 }

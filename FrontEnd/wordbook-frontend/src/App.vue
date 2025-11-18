@@ -1,6 +1,7 @@
 <!-- src/App.vue -->
 <template>
   <div :class="['app-root', theme]">
+    <BackButton />
     <!-- 右上角的主题切换按钮 -->
     <div
       class="theme-switcher-float"
@@ -33,6 +34,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import BackButton from './components/BackButton.vue'
 import moon from './assets/icons/moon.svg'
 import sun from './assets/icons/sun.svg'
 
