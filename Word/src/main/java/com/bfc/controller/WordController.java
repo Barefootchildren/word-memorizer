@@ -1,5 +1,6 @@
 package com.bfc.controller;
 
+import com.bfc.dto.WordDto;
 import com.bfc.entity.Word;
 import com.bfc.service.WordServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,14 +31,14 @@ public class WordController {
      * 按 day + lang 查询单词列表
      */
     @GetMapping("/day/{day}")
-    public List<Word> getWordsByDay(
+    public List<WordDto> getWordsByDay(
             @PathVariable Integer day,
             @RequestParam(required = false, defaultValue = "EN") String lang
     ) {
         if (day == null || day < 1) {
             return List.of();
         }
-        return wordService.findByDayAndLang(day, lang);
+        return wordService.findDtosByDayAndLang(day, lang);
     }
 
     /**
