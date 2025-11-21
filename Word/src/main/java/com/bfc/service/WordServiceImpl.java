@@ -54,11 +54,20 @@ public class WordServiceImpl {
             return List.of();
         }
 
-        List<Integer> wordIds = words.stream().map(Word::getId).toList();
-        List<WordExtension> extensions = wordExtensionRepository.findByWordIdIn(wordIds);
+        // 1. 取出所有单词 id
+        List<Integer> wordIds = words.stream()
+                .map(Word::getId)
+                .toList();
+
+        // 2. 一次性把这些单词的拓展词查出来
+        List<WordExtension> extensions =
+                wordExtensionRepository.findByWordIdIn(wordIds);
+
+        // 3. 按 wordId 分组：wordId -> 当前单词的所有扩展词
         Map<Integer, List<WordExtension>> extensionMap = extensions.stream()
                 .collect(Collectors.groupingBy(ext -> ext.getWord().getId()));
 
+        // 4. 组装 WordDto + WordExtensionDto
         return words.stream().map(word -> {
             WordDto dto = new WordDto();
             dto.setId(word.getId());
@@ -68,19 +77,23 @@ public class WordServiceImpl {
             dto.setLang(word.getLang());
             dto.setCreatedAt(word.getCreatedAt());
 
-            List<WordExtensionDto> extDtos = extensionMap.getOrDefault(word.getId(), List.of())
+            List<WordExtensionDto> extDtos = extensionMap
+                    .getOrDefault(word.getId(), List.of())
                     .stream()
-                    .sorted(Comparator.comparing(ext -> ext.getSortOrder() == null ? 0 : ext.getSortOrder()))
+                    .sorted(Comparator.comparing(
+                            ext -> ext.getSortOrder() == null ? 0 : ext.getSortOrder()
+                    ))
                     .map(ext -> {
-                        WordExtensionDto extDto = new WordExtensionDto();
-                        extDto.setId(ext.getId());
-                        extDto.setType(ext.getType());
-                        extDto.setTextKor(ext.getTextKor());
-                        extDto.setTextCn(ext.getTextCn());
-                        extDto.setSortOrder(ext.getSortOrder() == null ? 0 : ext.getSortOrder());
-                        return extDto;
+                        WordExtensionDto e = new WordExtensionDto();
+                        e.setId(ext.getId());
+                        e.setType(ext.getType());
+                        e.setTextKor(ext.getTextKor());
+                        e.setTextCn(ext.getTextCn());
+                        e.setSortOrder(ext.getSortOrder() == null ? 0 : ext.getSortOrder());
+                        return e;
                     })
                     .toList();
+
             dto.setExtensions(extDtos);
             return dto;
         }).toList();

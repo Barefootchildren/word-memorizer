@@ -22,7 +22,12 @@ const routes = [
   { path: '/hard-words', component: HardWord },
   { path: '/review-records', component: ReviewRecord },
   { path: '/profile', component: Profile },
-  { path: '/:pathMatch(.*)*', component: NotFound }
+  { path: '/:pathMatch(.*)*', component: NotFound },
+  {
+  path: '/demo',
+  name: 'Demo',
+  component: () => import('../views/WordListDemo.vue')
+}
 ]
 
 const router = createRouter({

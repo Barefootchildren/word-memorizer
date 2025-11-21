@@ -1,25 +1,25 @@
 <template>
-    <div class="select-day-root">
-      <h2>请选择要学习的天数（{{ langLabel }}）</h2>
+  <div class="select-day-root">
+    <h2>请选择要学习的天数（{{ langLabel }}）</h2>
 
-      <div class="day-list">
-        <button
-          v-for="day in days"
-          :key="day"
-          class="day-btn"
-          @click="goToDay(day)"
-        >
-          第{{ day }}天
-        </button>
-      </div>
-
-      <div v-if="loading" class="loading-tip">加载中...</div>
-      <div v-if="!loading && days.length === 0" class="none-tip">暂无可选天数</div>
+    <div class="day-list">
+      <button
+        v-for="day in days"
+        :key="day"
+        class="day-btn"
+        @click="goToDay(day)"
+      >
+        第{{ day }}天
+      </button>
     </div>
+
+    <div v-if="loading" class="loading-tip">加载中...</div>
+    <div v-if="!loading && days.length === 0" class="none-tip">暂无可选天数</div>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const days = ref([])
@@ -30,7 +30,9 @@ const router = useRouter()
 const lang = ref(localStorage.getItem('wordLang') || 'EN')
 
 // 显示在标题里的中文标签
-const langLabel = computed(() => (lang.value === 'KO' ? '韩语单词' : '英语单词'))
+const langLabel = computed(() =>
+  lang.value === 'KO' ? '韩语单词' : '英语单词'
+)
 
 const goToDay = (day) => {
   router.push(`/words/${day}`)
@@ -88,7 +90,8 @@ h2 {
   color: #fff;
   transform: scale(1.04);
 }
-.loading-tip, .none-tip {
+.loading-tip,
+.none-tip {
   color: #888;
   font-size: 1.08rem;
   margin-top: 22px;

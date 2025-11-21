@@ -177,48 +177,94 @@
           </td>
           <td v-else class="chinese-hidden">---</td>
 
-          <!-- 拓展词列 -->
-          <td v-if="showExtensions" class="ext-col">
-            <div v-if="getExtensionsByType(item, 'SIMILAR').length" class="ext-group">
-              <span class="ext-tag ext-tag-similar">近</span>
-              <div class="ext-list">
-                <div
-                  v-for="ext in getExtensionsByType(item, 'SIMILAR')"
-                  :key="ext.id"
-                  class="ext-item"
-                >
-                  <span class="speak" title="发音">🔊</span>
-                  <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
-                </div>
-              </div>
-            </div>
-            <div v-if="getExtensionsByType(item, 'RELATED').length" class="ext-group">
-              <span class="ext-tag ext-tag-related">关</span>
-              <div class="ext-list">
-                <div
-                  v-for="ext in getExtensionsByType(item, 'RELATED')"
-                  :key="ext.id"
-                  class="ext-item"
-                >
-                  <span class="speak" title="发音">🔊</span>
-                  <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
-                </div>
-              </div>
-            </div>
-            <div v-if="getExtensionsByType(item, 'IDIOM').length" class="ext-group">
-              <span class="ext-tag ext-tag-idiom">惯</span>
-              <div class="ext-list">
-                <div
-                  v-for="ext in getExtensionsByType(item, 'IDIOM')"
-                  :key="ext.id"
-                  class="ext-item"
-                >
-                  <span class="speak" title="发音">🔊</span>
-                  <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
-                </div>
-              </div>
-            </div>
-          </td>
+<!-- 拓展词列 -->
+<td v-if="showExtensions" class="ext-col">
+
+  <!-- SIMILAR 近义 -->
+  <div v-if="getExtensionsByType(item, 'SIMILAR').length" class="ext-group">
+    <span class="ext-tag ext-tag-similar">近</span>
+    <div class="ext-list">
+      <div
+        v-for="ext in getExtensionsByType(item, 'SIMILAR')"
+        :key="ext.id"
+        class="ext-item"
+      >
+        <span
+          class="speak"
+          title="发音"
+          @click="speak(ext.textKor)"
+        >
+          🔊
+        </span>
+        <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- RELATED 关联词 -->
+  <div v-if="getExtensionsByType(item, 'RELATED').length" class="ext-group">
+    <span class="ext-tag ext-tag-related">关</span>
+    <div class="ext-list">
+      <div
+        v-for="ext in getExtensionsByType(item, 'RELATED')"
+        :key="ext.id"
+        class="ext-item"
+      >
+        <span
+          class="speak"
+          title="发音"
+          @click="speak(ext.textKor)"
+        >
+          🔊
+        </span>
+        <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+      </div>
+    </div>
+  </div>
+  <!-- ANTONYM 反义词 -->
+  <div v-if="getExtensionsByType(item, 'ANTONYM').length" class="ext-group">
+    <span class="ext-tag ext-tag-antonym">反</span>
+    <div class="ext-list">
+      <div
+        v-for="ext in getExtensionsByType(item, 'ANTONYM')"
+        :key="ext.id"
+        class="ext-item"
+      >
+        <span
+          class="speak"
+          title="发音"
+          @click="speak(ext.textKor)"
+        >
+          🔊
+        </span>
+        <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- IDIOM 惯用语 -->
+  <div v-if="getExtensionsByType(item, 'IDIOM').length" class="ext-group">
+    <span class="ext-tag ext-tag-idiom">惯</span>
+    <div class="ext-list">
+      <div
+        v-for="ext in getExtensionsByType(item, 'IDIOM')"
+        :key="ext.id"
+        class="ext-item"
+      >
+        <span
+          class="speak"
+          title="发音"
+          @click="speak(ext.textKor)"
+        >
+          🔊
+        </span>
+        <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+      </div>
+    </div>
+  </div>
+
+</td>
+
         </tr>
       </tbody>
     </table>
@@ -443,10 +489,29 @@ function checkChineseSpell(idx) {
 
 // 发音
 function speak(text) {
-  const msg = new window.SpeechSynthesisUtterance(text)
-  msg.lang = 'en-US'
-  window.speechSynthesis.speak(msg)
+  if (!window.speechSynthesis) {
+    return
+  }
+
+  const utter = new window.SpeechSynthesisUtterance(text)
+
+  // 当前语言（从 localStorage 读取）
+  const curLang = localStorage.getItem('wordLang') || 'EN'
+  const targetLang = curLang === 'KO' ? 'ko-KR' : 'en-US'
+  utter.lang = targetLang
+
+  // 尝试匹配对应语言的 voice
+  const voices = window.speechSynthesis.getVoices()
+  const matched = voices.find(v => v.lang && v.lang.startsWith(curLang === 'KO' ? 'ko' : 'en'))
+  if (matched) {
+    utter.voice = matched
+  }
+
+  // 避免多个排队
+  window.speechSynthesis.cancel()
+  window.speechSynthesis.speak(utter)
 }
+
 
 // 拓展词
 function getExtensionsByType(item, type) {
@@ -805,6 +870,9 @@ button.toggle-btn:hover {
 .ext-tag-idiom {
   background: #ff9800;
 }
+.ext-tag-antonym {
+  background: #e53935; /* 你可以换成自己喜欢的颜色 */
+}
 .ext-list {
   display: flex;
   flex-direction: column;
@@ -823,6 +891,6 @@ button.toggle-btn:hover {
   overflow-wrap: break-word;
 }
 .speak {
-  cursor: default;
+  cursor: pointer;
 }
 </style>

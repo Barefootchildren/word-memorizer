@@ -345,10 +345,29 @@ function checkChineseSpell(idx) {
 
 // 发音
 function speak(text) {
-  const msg = new window.SpeechSynthesisUtterance(text)
-  msg.lang = 'en-US'
-  window.speechSynthesis.speak(msg)
+  if (!window.speechSynthesis) {
+    return
+  }
+
+  const utter = new window.SpeechSynthesisUtterance(text)
+
+  // 当前语言（从 localStorage 读取）
+  const curLang = localStorage.getItem('wordLang') || 'EN'
+  const targetLang = curLang === 'KO' ? 'ko-KR' : 'en-US'
+  utter.lang = targetLang
+
+  // 尝试匹配对应语言的 voice
+  const voices = window.speechSynthesis.getVoices()
+  const matched = voices.find(v => v.lang && v.lang.startsWith(curLang === 'KO' ? 'ko' : 'en'))
+  if (matched) {
+    utter.voice = matched
+  }
+
+  // 避免多个排队
+  window.speechSynthesis.cancel()
+  window.speechSynthesis.speak(utter)
 }
+
 
 // 编辑中文
 function enableEdit(idx) {
