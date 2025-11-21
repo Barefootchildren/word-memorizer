@@ -10,7 +10,10 @@
     </div>
 
     <h1>
-      第{{ day }}天（{{ langLabel }}）
+      第{{ day }}天（{{ langLabel }}<template v-if="bookName">
+        /
+        {{ bookName }}</template
+      >）
     </h1>
 
     <table>
@@ -180,6 +183,27 @@
 <!-- 拓展词列 -->
 <td v-if="showExtensions" class="ext-col">
 
+  <!-- SENTENCE 例句 -->
+  <div v-if="getExtensionsByType(item, 'SENTENCE').length" class="ext-group">
+    <span class="ext-tag ext-tag-sentence">例</span>
+    <div class="ext-list">
+      <div
+        v-for="ext in getExtensionsByType(item, 'SENTENCE')"
+        :key="ext.id"
+        class="ext-item"
+      >
+        <span
+          class="speak"
+          title="发音"
+          @click="speak(ext.textKor)"
+        >
+          🔊
+        </span>
+        <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+      </div>
+    </div>
+  </div>
+
   <!-- SIMILAR 近义 -->
   <div v-if="getExtensionsByType(item, 'SIMILAR').length" class="ext-group">
     <span class="ext-tag ext-tag-similar">近</span>
@@ -286,7 +310,10 @@ function goDaySelect() {
   router.push('/select-day')
 }
 function goHardWords() {
-  router.push('/hard-words')
+  router.push({
+    path: '/hard-words',
+    query: { day: day.value, lang: lang.value }
+  })
 }
 
 // 当前第几天
@@ -295,6 +322,8 @@ const day = ref(Number(route.params.day) || 1)
 
 // 当前语言
 const lang = ref(localStorage.getItem('wordLang') || 'EN')
+const bookId = ref(localStorage.getItem('wordBookId'))
+const bookName = ref(localStorage.getItem('wordBookName') || '')
 const langLabel = computed(() => (lang.value === 'KO' ? '韩语单词' : '英语单词'))
 
 const words = ref([])
@@ -331,7 +360,14 @@ const fetchWords = async () => {
   loading.value = true
   msg.value = ''
   try {
-    const resp = await fetch(`/api/words/day/${day.value}?lang=${lang.value}`)
+    if (!bookId.value) {
+      router.push('/book-select')
+      loading.value = false
+      return
+    }
+    const resp = await fetch(
+      `/api/words/day/${day.value}?lang=${lang.value}&bookId=${bookId.value}`
+    )
     const data = await resp.json()
     words.value = Array.isArray(data)
       ? data.map((w) => ({
@@ -863,6 +899,9 @@ button.toggle-btn:hover {
 }
 .ext-tag-similar {
   background: #2196f3;
+}
+.ext-tag-sentence {
+  background: #26c6da;
 }
 .ext-tag-related {
   background: #9c27b0;

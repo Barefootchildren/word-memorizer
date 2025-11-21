@@ -1,6 +1,10 @@
 <template>
   <div class="select-day-root">
-    <h2>请选择要学习的天数（{{ langLabel }}）</h2>
+    <h2>
+      请选择要学习的天数（{{ langLabel }}<template v-if="bookName"> / {{
+        bookName
+      }}</template>）
+    </h2>
 
     <div class="day-list">
       <button
@@ -28,6 +32,8 @@ const router = useRouter()
 
 // 当前语言：EN 或 KO
 const lang = ref(localStorage.getItem('wordLang') || 'EN')
+const bookId = ref(localStorage.getItem('wordBookId'))
+const bookName = ref(localStorage.getItem('wordBookName') || '')
 
 // 显示在标题里的中文标签
 const langLabel = computed(() =>
@@ -39,8 +45,15 @@ const goToDay = (day) => {
 }
 
 onMounted(async () => {
+  if (!bookId.value) {
+    loading.value = false
+    router.push('/book-select')
+    return
+  }
   try {
-    const resp = await fetch(`/api/words/days?lang=${lang.value}`)
+    const resp = await fetch(
+      `/api/words/days?lang=${lang.value}&bookId=${bookId.value}`
+    )
     const arr = await resp.json()
     days.value = arr
   } catch {

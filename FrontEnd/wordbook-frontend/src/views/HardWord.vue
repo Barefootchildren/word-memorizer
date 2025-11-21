@@ -3,9 +3,13 @@
     <div class="top-btns">
       <button @click="goHome" class="nav-btn">返回主页</button>
       <button @click="goDaySelect" class="nav-btn">返回天数选择</button>
+      <button @click="toggleExtensions" class="ext-btn">
+        {{ showExtensions ? '隐藏拓展词' : '显示拓展词' }}
+      </button>
     </div>
 
     <h1>顽固单词列表（{{ langLabel }}）</h1>
+    <div class="day-info">当前天数：第 {{ day }} 天</div>
 
     <table>
       <thead>
@@ -29,6 +33,7 @@
               {{ chineseSpellMode ? '退出拼写' : '拼写' }}
             </button>
           </th>
+          <th v-if="showExtensions">拓展词</th>
           <th>操作</th>
         </tr>
       </thead>
@@ -160,6 +165,128 @@
           </td>
           <td v-else class="chinese-hidden">---</td>
 
+          <!-- 拓展词列 -->
+          <td v-if="showExtensions" class="ext-col">
+
+            <!-- SENTENCE 例句 -->
+            <div
+              v-if="getExtensionsByType(item, 'SENTENCE').length"
+              class="ext-group"
+            >
+              <span class="ext-tag ext-tag-sentence">例</span>
+              <div class="ext-list">
+                <div
+                  v-for="ext in getExtensionsByType(item, 'SENTENCE')"
+                  :key="ext.id"
+                  class="ext-item"
+                >
+                  <span
+                    class="speak"
+                    title="发音"
+                    @click="speak(ext.textKor)"
+                  >
+                    🔊
+                  </span>
+                  <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- SIMILAR 近义词 -->
+            <div
+              v-if="getExtensionsByType(item, 'SIMILAR').length"
+              class="ext-group"
+            >
+              <span class="ext-tag ext-tag-similar">近</span>
+              <div class="ext-list">
+                <div
+                  v-for="ext in getExtensionsByType(item, 'SIMILAR')"
+                  :key="ext.id"
+                  class="ext-item"
+                >
+                  <span
+                    class="speak"
+                    title="发音"
+                    @click="speak(ext.textKor)"
+                  >
+                    🔊
+                  </span>
+                  <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- RELATED 关联词 -->
+            <div
+              v-if="getExtensionsByType(item, 'RELATED').length"
+              class="ext-group"
+            >
+              <span class="ext-tag ext-tag-related">关</span>
+              <div class="ext-list">
+                <div
+                  v-for="ext in getExtensionsByType(item, 'RELATED')"
+                  :key="ext.id"
+                  class="ext-item"
+                >
+                  <span
+                    class="speak"
+                    title="发音"
+                    @click="speak(ext.textKor)"
+                  >
+                    🔊
+                  </span>
+                  <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- ANTONYM 反义词 -->
+            <div
+              v-if="getExtensionsByType(item, 'ANTONYM').length"
+              class="ext-group"
+            >
+              <span class="ext-tag ext-tag-antonym">反</span>
+              <div class="ext-list">
+                <div
+                  v-for="ext in getExtensionsByType(item, 'ANTONYM')"
+                  :key="ext.id"
+                  class="ext-item"
+                >
+                  <span
+                    class="speak"
+                    title="发音"
+                    @click="speak(ext.textKor)"
+                  >
+                    🔊
+                  </span>
+                  <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- IDIOM 惯用语 -->
+            <div v-if="getExtensionsByType(item, 'IDIOM').length" class="ext-group">
+              <span class="ext-tag ext-tag-idiom">惯</span>
+              <div class="ext-list">
+                <div
+                  v-for="ext in getExtensionsByType(item, 'IDIOM')"
+                  :key="ext.id"
+                  class="ext-item"
+                >
+                  <span
+                    class="speak"
+                    title="发音"
+                    @click="speak(ext.textKor)"
+                  >
+                    🔊
+                  </span>
+                  <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+                </div>
+              </div>
+            </div>
+
+          </td>
+
           <td>
             <button class="remove-btn" @click="removeHard(i)" tabindex="-1">
               移除
@@ -176,9 +303,10 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 function goHome() {
   router.push('/home')
 }
@@ -186,13 +314,15 @@ function goDaySelect() {
   router.push('/select-day')
 }
 
-// 当前语言
-const lang = ref(localStorage.getItem('wordLang') || 'EN')
+// 当前语言 & 天数
+const lang = ref(route.query.lang || localStorage.getItem('wordLang') || 'EN')
+const day = ref(Number(route.query.day) || 1)
 const langLabel = computed(() => (lang.value === 'KO' ? '韩语单词' : '英语单词'))
 
 const words = ref([])
 const loading = ref(false)
 const msg = ref('')
+const showExtensions = ref(false)
 
 // 状态变量
 const wordVisible = ref(true)
@@ -215,13 +345,33 @@ const editIndex = ref([])
 const editInput = ref([])
 const editMsg = ref([])
 
+const getHardWordsByDay = async (username, day, lang) => {
+  const resp = await fetch(
+    `/api/hard-words/${encodeURIComponent(username)}/day/${day}?lang=${lang}`
+  )
+  if (!resp.ok) {
+    throw new Error('fetch hard words failed')
+  }
+  return resp.json()
+}
+
 const fetchWords = async () => {
   loading.value = true
   msg.value = ''
   const username = localStorage.getItem('username') || ''
+  if (!username) {
+    msg.value = '请先登录'
+    loading.value = false
+    return
+  }
   try {
-    const resp = await fetch(`/api/hard-words/${username}?lang=${lang.value}`)
-    words.value = await resp.json()
+    const data = await getHardWordsByDay(username, day.value, lang.value)
+    words.value = Array.isArray(data)
+      ? data.map((w) => ({
+          ...w,
+          extensions: Array.isArray(w.extensions) ? w.extensions : []
+        }))
+      : []
     resetState()
   } catch {
     msg.value = '获取单词失败'
@@ -247,12 +397,24 @@ function resetState() {
   editMsg.value = Array(n).fill('')
 }
 
+function getExtensionsByType(item, type) {
+  if (!item || !Array.isArray(item.extensions)) return []
+  return item.extensions
+    .filter((ext) => ext.type === type)
+    .sort(
+      (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+    )
+}
+
 // 切换隐藏/拼写
 function toggleWord() {
   wordVisible.value = !wordVisible.value
 }
 function toggleChinese() {
   chineseVisible.value = !chineseVisible.value
+}
+function toggleExtensions() {
+  showExtensions.value = !showExtensions.value
 }
 function toggleWordSpell() {
   wordSpellMode.value = !wordSpellMode.value
@@ -465,6 +627,11 @@ h1 {
   text-align: left;
   font-weight: 700;
 }
+.day-info {
+  color: #cfd8dc;
+  margin: -12px 0 20px 0;
+  font-size: 15px;
+}
 table {
   border-collapse: collapse;
   width: 100%;
@@ -643,5 +810,74 @@ button.toggle-btn:hover {
 .msg {
   margin-top: 14px;
   color: #ffae00;
+}
+.ext-btn {
+  margin-left: auto;
+  padding: 6px 18px;
+  border-radius: 7px;
+  border: 1px solid #1e90ff;
+  color: #1e90ff;
+  background: transparent;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.ext-btn:hover {
+  background: #1e90ff;
+  color: #fff;
+}
+.ext-col {
+  font-size: 13px;
+  color: #cfd8dc;
+}
+.ext-group {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin-bottom: 8px;
+}
+.ext-tag {
+  display: inline-block;
+  min-width: 26px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 12px;
+  text-align: center;
+}
+.ext-tag-similar {
+  background: #2196f3;
+}
+.ext-tag-sentence {
+  background: #26c6da;
+}
+.ext-tag-related {
+  background: #9c27b0;
+}
+.ext-tag-idiom {
+  background: #ff9800;
+}
+.ext-tag-antonym {
+  background: #e53935;
+}
+.ext-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ext-item {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  max-width: 250px;
+  word-break: break-all;
+}
+.ext-text {
+  display: inline-block;
+  max-width: 250px;
+  overflow-wrap: break-word;
+}
+.speak {
+  cursor: pointer;
 }
 </style>
