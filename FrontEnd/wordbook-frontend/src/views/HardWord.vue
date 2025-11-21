@@ -3,6 +3,7 @@
     <div class="top-btns">
       <button @click="goHome" class="nav-btn">返回主页</button>
       <button @click="goDaySelect" class="nav-btn">返回天数选择</button>
+      <button @click="goTodayList" class="nav-btn">返回当天单词列表</button>
       <button @click="toggleExtensions" class="ext-btn">
         {{ showExtensions ? '隐藏拓展词' : '显示拓展词' }}
       </button>
@@ -288,6 +289,10 @@
           </td>
 
           <td>
+            <button class="star-btn" @click.stop="toggleStar(i)" tabindex="-1">
+              <span v-if="starFlags[i]">⭐</span>
+              <span v-else>-</span>
+            </button>
             <button class="remove-btn" @click="removeHard(i)" tabindex="-1">
               移除
             </button>
@@ -312,6 +317,9 @@ function goHome() {
 }
 function goDaySelect() {
   router.push('/select-day')
+}
+function goTodayList() {
+  router.push('/words/' + day.value)
 }
 
 // 当前语言 & 天数
@@ -339,6 +347,7 @@ const skipWord = ref([])
 const skipChinese = ref([])
 const peekBufferWord = ref([])
 const peekBufferChinese = ref([])
+const starFlags = ref([])
 
 // 编辑中文
 const editIndex = ref([])
@@ -358,6 +367,7 @@ const getHardWordsByDay = async (username, day, lang) => {
 const fetchWords = async () => {
   loading.value = true
   msg.value = ''
+  starFlags.value = []
   const username = localStorage.getItem('username') || ''
   if (!username) {
     msg.value = '请先登录'
@@ -372,10 +382,12 @@ const fetchWords = async () => {
           extensions: Array.isArray(w.extensions) ? w.extensions : []
         }))
       : []
+    starFlags.value = words.value.map((w) => w.isStar === 1)
     resetState()
   } catch {
     msg.value = '获取单词失败'
     words.value = []
+    starFlags.value = []
   }
   loading.value = false
 }
@@ -395,6 +407,20 @@ function resetState() {
   editIndex.value = Array(n).fill(false)
   editInput.value = words.value.map((w) => w.meaning)
   editMsg.value = Array(n).fill('')
+}
+
+async function toggleStar(i) {
+  const item = words.value[i]
+  if (!item) return
+  starFlags.value[i] = !starFlags.value[i]
+  const starVal = starFlags.value[i] ? 1 : 0
+  const username = localStorage.getItem('username') || ''
+
+  await fetch('/api/hard-words/star', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `username=${encodeURIComponent(username)}&wordId=${item.id}&star=${starVal}`
+  })
 }
 
 function getExtensionsByType(item, type) {
@@ -743,6 +769,19 @@ button.toggle-btn:hover {
 }
 .remove-btn:hover {
   background: #d00;
+}
+.star-btn {
+  background: transparent;
+  border: 1px solid #888;
+  border-radius: 4px;
+  padding: 2px 8px;
+  margin-right: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  color: #ffce45;
+}
+.star-btn:hover {
+  border-color: #ffce45;
 }
 .wrong {
   color: #f44;

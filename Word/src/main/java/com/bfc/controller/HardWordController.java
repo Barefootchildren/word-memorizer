@@ -2,11 +2,13 @@ package com.bfc.controller;
 
 import com.bfc.dto.WordDto;
 import com.bfc.entity.User;
+import com.bfc.entity.HardWord;
 import com.bfc.entity.Word;
 import com.bfc.service.HardWordServiceImpl;
 import com.bfc.service.UserServiceImpl;
 import com.bfc.service.WordServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -38,7 +40,7 @@ public class HardWordController {
             return List.of();
         }
 
-        List<Word> words = hardWordService.findByUser(user)
+        List<HardWord> hardWords = hardWordService.findByUser(user)
                 .stream()
                 .filter(hw -> {
                     if (lang == null || lang.isEmpty()) {
@@ -47,11 +49,9 @@ public class HardWordController {
                     Word w = hw.getWord();
                     return w != null && lang.equalsIgnoreCase(w.getLang());
                 })
-                .map(hw -> hw.getWord())
-                .filter(w -> w != null)
                 .collect(Collectors.toList());
 
-        return wordService.buildWordDtos(words);
+        return wordService.buildWordDtosWithStars(hardWords);
     }
 
     /**
@@ -66,8 +66,8 @@ public class HardWordController {
             return List.of();
         }
 
-        List<Word> words = hardWordService.findHardWordsByUserLangDay(user, lang, day);
-        return wordService.buildWordDtos(words);
+        List<HardWord> words = hardWordService.findHardWordsByUserLangDay(user, lang, day);
+        return wordService.buildWordDtosWithStars(words);
     }
 
     /**
@@ -96,5 +96,16 @@ public class HardWordController {
         }
         hardWordService.removeHardWord(user, wordOpt.get());
         return "移除成功";
+    }
+
+    @PostMapping("/star")
+    @Transactional
+    public String updateStar(@RequestParam String username, @RequestParam Integer wordId, @RequestParam Integer star) {
+        User user = userService.findByUsername(username);
+        if (user == null || wordId == null || star == null) {
+            return "用户或单词不存在";
+        }
+        hardWordService.updateStar(user.getId(), wordId, star != 0);
+        return "OK";
     }
 }

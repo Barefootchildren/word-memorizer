@@ -14,4 +14,8 @@ public class WordDto {
     private String lang;
     private LocalDateTime createdAt;
     private List<WordExtensionDto> extensions;
+    /**
+     * 顽固单词星标（0/1），普通列表可为空
+     */
+    private Integer isStar;
 }

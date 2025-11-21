@@ -2,6 +2,7 @@ package com.bfc.service;
 
 import com.bfc.dto.WordDto;
 import com.bfc.dto.WordExtensionDto;
+import com.bfc.entity.HardWord;
 import com.bfc.entity.Word;
 import com.bfc.entity.WordExtension;
 import com.bfc.repository.WordExtensionRepository;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -158,5 +160,27 @@ public class WordServiceImpl {
             dto.setExtensions(extDtos);
             return dto;
         }).toList();
+    }
+
+    public List<WordDto> buildWordDtosWithStars(List<HardWord> hardWords) {
+        if (hardWords == null || hardWords.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Integer, Integer> starMap = hardWords.stream()
+                .filter(hw -> hw.getWord() != null)
+                .collect(Collectors.toMap(hw -> hw.getWord().getId(),
+                        hw -> hw.getIsStar() == null ? 0 : hw.getIsStar(), (a, b) -> a));
+
+        List<Word> words = hardWords.stream()
+                .map(HardWord::getWord)
+                .filter(Objects::nonNull)
+                .toList();
+
+        List<WordDto> dtos = buildWordDtos(words);
+        for (WordDto dto : dtos) {
+            dto.setIsStar(starMap.getOrDefault(dto.getId(), 0));
+        }
+        return dtos;
     }
 }
