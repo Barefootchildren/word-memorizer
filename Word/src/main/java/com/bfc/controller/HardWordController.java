@@ -1,5 +1,6 @@
 package com.bfc.controller;
 
+import com.bfc.dto.WordDto;
 import com.bfc.entity.User;
 import com.bfc.entity.Word;
 import com.bfc.service.HardWordServiceImpl;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/hard-words")
@@ -24,32 +26,19 @@ public class HardWordController {
     @Autowired
     private WordServiceImpl wordService;
 
-    // 用于前端的简化 DTO，只返回单词本身信息
-    public static class WordDTO {
-        public Integer id;
-        public String word;
-        public String meaning;
-
-        public WordDTO(Integer id, String word, String meaning) {
-            this.id = id;
-            this.word = word;
-            this.meaning = meaning;
-        }
-    }
-
     /**
      * 查询某用户所有顽固单词（可选按语言过滤）
      * /api/hard-words/{username}?lang=EN 或 KO
      */
     @GetMapping("/{username}")
-    public List<WordDTO> getUserHardWords(@PathVariable String username,
+    public List<WordDto> getUserHardWords(@PathVariable String username,
                                           @RequestParam(required = false) String lang) {
         User user = userService.findByUsername(username);
         if (user == null) {
             return List.of();
         }
 
-        return hardWordService.findByUser(user)
+        List<Word> words = hardWordService.findByUser(user)
                 .stream()
                 .filter(hw -> {
                     if (lang == null || lang.isEmpty()) {
@@ -58,12 +47,27 @@ public class HardWordController {
                     Word w = hw.getWord();
                     return w != null && lang.equalsIgnoreCase(w.getLang());
                 })
-                .map(hw -> new WordDTO(
-                        hw.getWord().getId(),
-                        hw.getWord().getWord(),
-                        hw.getWord().getMeaning()
-                ))
-                .toList();
+                .map(hw -> hw.getWord())
+                .filter(w -> w != null)
+                .collect(Collectors.toList());
+
+        return wordService.buildWordDtos(words);
+    }
+
+    /**
+     * 按天 + 语言查询顽固单词
+     */
+    @GetMapping("/{username}/day/{day}")
+    public List<WordDto> getUserHardWordsByDay(@PathVariable String username,
+                                               @PathVariable Integer day,
+                                               @RequestParam String lang) {
+        User user = userService.findByUsername(username);
+        if (user == null || day == null) {
+            return List.of();
+        }
+
+        List<Word> words = hardWordService.findHardWordsByUserLangDay(user, lang, day);
+        return wordService.buildWordDtos(words);
     }
 
     /**

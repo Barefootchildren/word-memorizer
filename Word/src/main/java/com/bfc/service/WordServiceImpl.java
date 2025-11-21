@@ -110,7 +110,7 @@ public class WordServiceImpl {
         return wordRepository.findByWord(word);
     }
 
-    private List<WordDto> buildWordDtos(List<Word> words) {
+    public List<WordDto> buildWordDtos(List<Word> words) {
         if (words.isEmpty()) {
             return List.of();
         }

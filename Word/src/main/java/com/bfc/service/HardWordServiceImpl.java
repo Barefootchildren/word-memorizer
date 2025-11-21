@@ -68,4 +68,15 @@ public class HardWordServiceImpl {
         hardWordRepository.deleteByUserAndWord(user, word);
     }
 
+    /**
+     * 按用户 + 语言 + 天数查询顽固单词（返回 Word 实体列表）
+     */
+    @Transactional(readOnly = true)
+    public List<Word> findHardWordsByUserLangDay(User user, String lang, Integer day) {
+        if (user == null || lang == null || day == null) {
+            return List.of();
+        }
+        return hardWordRepository.findHardWords(user.getId(), lang, day);
+    }
+
 }

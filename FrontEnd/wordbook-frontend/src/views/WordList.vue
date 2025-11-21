@@ -310,7 +310,10 @@ function goDaySelect() {
   router.push('/select-day')
 }
 function goHardWords() {
-  router.push('/hard-words')
+  router.push({
+    path: '/hard-words',
+    query: { day: day.value, lang: lang.value }
+  })
 }
 
 // 当前第几天
