@@ -183,6 +183,27 @@
 <!-- 拓展词列 -->
 <td v-if="showExtensions" class="ext-col">
 
+  <!-- SENTENCE 例句 -->
+  <div v-if="getExtensionsByType(item, 'SENTENCE').length" class="ext-group">
+    <span class="ext-tag ext-tag-sentence">例</span>
+    <div class="ext-list">
+      <div
+        v-for="ext in getExtensionsByType(item, 'SENTENCE')"
+        :key="ext.id"
+        class="ext-item"
+      >
+        <span
+          class="speak"
+          title="发音"
+          @click="speak(ext.textKor)"
+        >
+          🔊
+        </span>
+        <span class="ext-text">{{ ext.textKor }} — {{ ext.textCn }}</span>
+      </div>
+    </div>
+  </div>
+
   <!-- SIMILAR 近义 -->
   <div v-if="getExtensionsByType(item, 'SIMILAR').length" class="ext-group">
     <span class="ext-tag ext-tag-similar">近</span>
@@ -875,6 +896,9 @@ button.toggle-btn:hover {
 }
 .ext-tag-similar {
   background: #2196f3;
+}
+.ext-tag-sentence {
+  background: #26c6da;
 }
 .ext-tag-related {
   background: #9c27b0;
