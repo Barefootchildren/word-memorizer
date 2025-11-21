@@ -10,7 +10,10 @@
     </div>
 
     <h1>
-      第{{ day }}天（{{ langLabel }}）
+      第{{ day }}天（{{ langLabel }}<template v-if="bookName">
+        /
+        {{ bookName }}</template
+      >）
     </h1>
 
     <table>
@@ -295,6 +298,8 @@ const day = ref(Number(route.params.day) || 1)
 
 // 当前语言
 const lang = ref(localStorage.getItem('wordLang') || 'EN')
+const bookId = ref(localStorage.getItem('wordBookId'))
+const bookName = ref(localStorage.getItem('wordBookName') || '')
 const langLabel = computed(() => (lang.value === 'KO' ? '韩语单词' : '英语单词'))
 
 const words = ref([])
@@ -331,7 +336,14 @@ const fetchWords = async () => {
   loading.value = true
   msg.value = ''
   try {
-    const resp = await fetch(`/api/words/day/${day.value}?lang=${lang.value}`)
+    if (!bookId.value) {
+      router.push('/book-select')
+      loading.value = false
+      return
+    }
+    const resp = await fetch(
+      `/api/words/day/${day.value}?lang=${lang.value}&bookId=${bookId.value}`
+    )
     const data = await resp.json()
     words.value = Array.isArray(data)
       ? data.map((w) => ({

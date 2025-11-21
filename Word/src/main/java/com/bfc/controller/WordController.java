@@ -33,10 +33,14 @@ public class WordController {
     @GetMapping("/day/{day}")
     public List<WordDto> getWordsByDay(
             @PathVariable Integer day,
-            @RequestParam(required = false, defaultValue = "EN") String lang
+            @RequestParam(required = false, defaultValue = "EN") String lang,
+            @RequestParam(required = false) Integer bookId
     ) {
         if (day == null || day < 1) {
             return List.of();
+        }
+        if (bookId != null) {
+            return wordService.findDtosByDayLangAndBook(day, lang, bookId);
         }
         return wordService.findDtosByDayAndLang(day, lang);
     }
@@ -46,8 +50,12 @@ public class WordController {
      */
     @GetMapping("/days")
     public List<Integer> getAllDays(
-            @RequestParam(required = false, defaultValue = "EN") String lang
+            @RequestParam(required = false, defaultValue = "EN") String lang,
+            @RequestParam(required = false) Integer bookId
     ) {
+        if (bookId != null) {
+            return wordService.findDistinctDayByLangAndBook(lang, bookId);
+        }
         return wordService.findDistinctDayByLang(lang);
     }
 

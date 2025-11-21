@@ -46,10 +46,71 @@ public class WordServiceImpl {
     }
 
     /**
+     * 按 day + lang + book 查询单词
+     */
+    public List<Word> findByDayLangAndBook(Integer day, String lang, Integer bookId) {
+        return wordRepository.findByDayAndLangAndBookId(day, lang, bookId);
+    }
+
+    /**
      * 按 day + lang 查询单词列表，并填充拓展词
      */
     public List<WordDto> findDtosByDayAndLang(Integer day, String lang) {
         List<Word> words = wordRepository.findByDayAndLang(day, lang);
+        return buildWordDtos(words);
+    }
+
+    /**
+     * 按 day + lang + book 查询单词列表，并填充拓展词
+     */
+    public List<WordDto> findDtosByDayLangAndBook(Integer day, String lang, Integer bookId) {
+        List<Word> words = wordRepository.findByDayAndLangAndBookId(day, lang, bookId);
+        return buildWordDtos(words);
+    }
+
+    /**
+     * 查询某语言有哪些天数
+     */
+    public List<Integer> findDistinctDayByLang(String lang) {
+        return wordRepository.findDistinctDayByLang(lang);
+    }
+
+    /**
+     * 查询某语言 + 单词书有哪些天数
+     */
+    public List<Integer> findDistinctDayByLangAndBook(String lang, Integer bookId) {
+        return wordRepository.findDistinctDayByLangAndBookId(lang, bookId);
+    }
+
+    /**
+     * 根据 id 查询单词
+     */
+    public Optional<Word> findById(Integer id) {
+        return wordRepository.findById(id);
+    }
+
+    /**
+     * 新增或修改单词
+     */
+    public Word save(Word word) {
+        return wordRepository.save(word);
+    }
+
+    /**
+     * 删除单词
+     */
+    public void deleteById(Integer id) {
+        wordRepository.deleteById(id);
+    }
+
+    /**
+     * 按单词内容精确查找
+     */
+    public Word findByWord(String word) {
+        return wordRepository.findByWord(word);
+    }
+
+    private List<WordDto> buildWordDtos(List<Word> words) {
         if (words.isEmpty()) {
             return List.of();
         }
@@ -97,40 +158,5 @@ public class WordServiceImpl {
             dto.setExtensions(extDtos);
             return dto;
         }).toList();
-    }
-
-    /**
-     * 查询某语言有哪些天数
-     */
-    public List<Integer> findDistinctDayByLang(String lang) {
-        return wordRepository.findDistinctDayByLang(lang);
-    }
-
-    /**
-     * 根据 id 查询单词
-     */
-    public Optional<Word> findById(Integer id) {
-        return wordRepository.findById(id);
-    }
-
-    /**
-     * 新增或修改单词
-     */
-    public Word save(Word word) {
-        return wordRepository.save(word);
-    }
-
-    /**
-     * 删除单词
-     */
-    public void deleteById(Integer id) {
-        wordRepository.deleteById(id);
-    }
-
-    /**
-     * 按单词内容精确查找
-     */
-    public Word findByWord(String word) {
-        return wordRepository.findByWord(word);
     }
 }
