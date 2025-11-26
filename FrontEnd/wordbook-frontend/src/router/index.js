@@ -10,12 +10,14 @@ import ReviewRecord from '../views/ReviewRecord.vue'
 import Profile from '../views/Profile.vue'
 import NotFound from '../views/NotFound.vue'
 import LangSelect from '../views/LangSelect.vue'   // 新增：语言选择页
+import BookSelect from '../views/BookSelect.vue'
 
 const routes = [
   { path: '/', redirect: '/login' },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
   { path: '/lang-select', component: LangSelect }, // 新增：登录后选择语言
+  { path: '/book-select', component: BookSelect },
   { path: '/home', component: Home },
   { path: '/select-day', component: DaySelect },
   { path: '/words/:day', component: WordList, props: true },

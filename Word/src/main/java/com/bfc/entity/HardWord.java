@@ -25,6 +25,9 @@ public class HardWord {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Word word;
 
+    @Column(name = "is_star")
+    private Integer isStar;
+
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;

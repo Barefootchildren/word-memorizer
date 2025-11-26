@@ -8,6 +8,9 @@ import java.time.LocalDateTime;
 @Data
 @Entity
 @Table(name = "word_extension")
+/**
+ * type 取值：SIMILAR(近义词)、RELATED(关联词)、IDIOM(惯用语)、ANTONYM(反义词)、SENTENCE(例句)
+ */
 public class WordExtension {
 
     @Id

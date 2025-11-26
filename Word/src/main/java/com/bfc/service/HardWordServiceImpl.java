@@ -56,6 +56,7 @@ public class HardWordServiceImpl {
         HardWord hardWord = new HardWord();
         hardWord.setUser(user);
         hardWord.setWord(word);
+        hardWord.setIsStar(0);
         hardWord.setCreatedAt(java.time.LocalDateTime.now());
         return hardWordRepository.save(hardWord);
     }
@@ -66,6 +67,30 @@ public class HardWordServiceImpl {
     @Transactional  // 添加这个注解
     public void removeHardWord(User user, Word word) {
         hardWordRepository.deleteByUserAndWord(user, word);
+    }
+
+    /**
+     * 按用户 + 语言 + 天数查询顽固单词（返回 Word 实体列表）
+     */
+    @Transactional(readOnly = true)
+    public List<HardWord> findHardWordsByUserLangDay(User user, String lang, Integer day) {
+        if (user == null || lang == null || day == null) {
+            return List.of();
+        }
+        List<HardWord> list = hardWordRepository.findHardWords(user.getId(), lang, day);
+        for (HardWord hw : list) {
+            if (hw.getWord() != null) {
+                hw.getWord().getId();
+                hw.getWord().getWord();
+                hw.getWord().getMeaning();
+            }
+        }
+        return list;
+    }
+
+    @Transactional
+    public void updateStar(int userId, int wordId, boolean isStar) {
+        hardWordRepository.updateStar(userId, wordId, isStar ? 1 : 0);
     }
 
 }

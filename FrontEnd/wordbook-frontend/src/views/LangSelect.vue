@@ -21,7 +21,7 @@ const choose = (lang) => {
   localStorage.setItem('wordLang', lang)
 
   // 选择完语言后进入主页面
-  router.push('/home')
+  router.push('/book-select')
 }
 </script>
 
