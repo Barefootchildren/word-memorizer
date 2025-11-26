@@ -65,23 +65,54 @@
               </button>
               <span v-if="wordWrong[i]" class="wrong">✗</span>
             </template>
-            <template v-else>
-              <span class="word-text" @click="speak(item.word)">{{ item.word }}</span>
-              <transition name="fadeout">
-                <span v-if="hardFade[i]" class="hard-check">✔</span>
-              </transition>
-              <button v-if="!isHard(item) && !hardFade[i]" class="hard-btn" @click="markHard(i)" tabindex="-1">
-                顽固
-              </button>
 
-              <!-- “拓” 按住预览当前行拓展词 -->
-              <!-- 只有在没有全局显示拓展词，且该单词有拓展词时才显示 -->
-              <button v-if="!showExtensions && item.extensions && item.extensions.length"
-                :class="['ext-inline-btn', { active: activeExtRow === i }]" @mousedown.prevent="handleExtMouseDown(i)"
-                tabindex="-1">
-                拓
-              </button>
+            <template v-else>
+              <!-- 英语：单词 + 顽固 同一行，音标 + 拓 同一行 -->
+              <template v-if="lang === 'EN'">
+                <div class="word-main">
+                  <div class="word-row">
+                    <span class="word-text" @click="speak(item.word)">{{ item.word }}</span>
+                    <transition name="fadeout">
+                      <span v-if="hardFade[i]" class="hard-check">✔</span>
+                    </transition>
+                    <button v-if="!isHard(item) && !hardFade[i]" class="hard-btn" @click="markHard(i)" tabindex="-1">
+                      顽固
+                    </button>
+                  </div>
+
+                  <div v-if="item.phonetic" class="word-row word-phonetic-row">
+                    <span class="word-phonetic">
+                      {{ item.phonetic }}
+                    </span>
+                    <!-- “拓” 按住预览当前行拓展词 -->
+                    <!-- 只有在没有全局显示拓展词，且该单词有拓展词时才显示 -->
+                    <button v-if="!showExtensions && item.extensions && item.extensions.length"
+                      :class="['ext-inline-btn', { active: activeExtRow === i }]"
+                      @mousedown.prevent="handleExtMouseDown(i)" tabindex="-1">
+                      拓
+                    </button>
+                  </div>
+                </div>
+              </template>
+
+              <!-- 韩语：保持原来一行显示 -->
+              <template v-else>
+                <span class="word-text" @click="speak(item.word)">{{ item.word }}</span>
+                <transition name="fadeout">
+                  <span v-if="hardFade[i]" class="hard-check">✔</span>
+                </transition>
+                <button v-if="!isHard(item) && !hardFade[i]" class="hard-btn" @click="markHard(i)" tabindex="-1">
+                  顽固
+                </button>
+
+                <button v-if="!showExtensions && item.extensions && item.extensions.length"
+                  :class="['ext-inline-btn', { active: activeExtRow === i }]" @mousedown.prevent="handleExtMouseDown(i)"
+                  tabindex="-1">
+                  拓
+                </button>
+              </template>
             </template>
+
           </td>
           <td v-else class="word-hidden">---</td>
 
@@ -118,7 +149,7 @@
             </template>
             <template v-else>
               <div class="edit-area">
-                <span class="chinese" v-html="item.meaning.replace(/<br\s*\/?>/g, '<br>')"></span>
+                <span class="chinese" v-html="formatMeaning(item.meaning)"></span>
                 <button v-if="!editIndex[i]" class="edit-btn" @click="enableEdit(i)" tabindex="-1">
                   ✎
                 </button>
@@ -227,7 +258,6 @@
       回到顶部
     </button>
 
-
     <div v-if="loading" class="msg">加载中...</div>
 
     <div v-if="msg" class="msg">{{ msg }}</div>
@@ -311,10 +341,26 @@ const fetchWords = async () => {
     )
     const data = await resp.json()
     words.value = Array.isArray(data)
-      ? data.map((w) => ({
-        ...w,
-        extensions: Array.isArray(w.extensions) ? w.extensions : []
-      }))
+      ? data.map((w) => {
+        let displayWord = w.word
+        let phonetic = ''
+
+        // 只在英语模式下从 word 中拆出音标
+        if (lang.value === 'EN' && typeof w.word === 'string') {
+          const idx = w.word.indexOf('[')
+          if (idx > -1) {
+            displayWord = w.word.slice(0, idx).trim()
+            phonetic = w.word.slice(idx).trim()
+          }
+        }
+
+        return {
+          ...w,
+          word: displayWord,
+          phonetic,
+          extensions: Array.isArray(w.extensions) ? w.extensions : []
+        }
+      })
       : []
     resetState()
     updateBackToTopVisibility()
@@ -326,7 +372,6 @@ const fetchWords = async () => {
   }
   loading.value = false
 }
-
 
 // 获取当前语言下的顽固单词
 const fetchHardList = async () => {
@@ -659,6 +704,30 @@ async function saveEdit(idx) {
   }
 }
 
+// 中文多词性分行显示
+function formatMeaning(meaning) {
+  if (!meaning) return ''
+
+  // 先统一已有 <br>
+  let s = meaning.replace(/<br\s*\/?>/g, '<br>')
+
+  // 需要识别的词性缩写
+  const posPattern = /(n\.|v\.|vi\.|vt\.|adj\.|adv\.|prep\.|conj\.|pron\.|auxv\.)/g
+  let isFirst = true
+
+  // 从第二个词性开始，前面强制加 <br>
+  s = s.replace(posPattern, (match) => {
+    if (isFirst) {
+      isFirst = false
+      return match
+    }
+    return '<br>' + match
+  })
+
+  return s
+}
+
+
 // 路由参数变化时，重新加载该天数据
 watch(
   () => route.params.day,
@@ -723,7 +792,7 @@ table {
 
 th,
 td {
-  padding: 10px;
+  padding: 8px;
   border: 1px solid #444;
   vertical-align: middle;
 }
@@ -733,6 +802,29 @@ td.chinese-hidden {
   color: #fff;
   text-decoration: none;
   cursor: default;
+}
+
+.word-main {
+  display: inline-block;
+}
+
+.word-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.word-phonetic-row {
+  margin-top: 2px;
+}
+
+
+
+.word-phonetic {
+  display: block;
+  font-size: 12px;
+  color: #b0bec5;
+  margin-top: 2px;
 }
 
 .word-text {

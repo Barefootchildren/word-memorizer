@@ -54,7 +54,7 @@
         <tr v-for="(row, i) in displayWords" :key="row.item.id">
           <td>{{ i + 1 }}</td>
 
-          <!-- 单词列：星标放在单词文本后面，“拓”按住预览当前行拓展词 -->
+          <!-- 单词列 -->
           <td v-if="wordVisible || (wordSpellMode && wordSpelling[row.idx])">
             <template v-if="wordSpellMode && wordSpelling[row.idx]">
               <input
@@ -96,26 +96,59 @@
               </button>
               <span v-if="wordWrong[row.idx]" class="wrong">✗</span>
             </template>
+
             <template v-else>
-              <span class="word-text" @click="speak(row.item.word)">{{ row.item.word }}</span>
-              <!-- 星标：可点击文本，不改变样式，只是鼠标变成 pointer -->
-              <span class="star-toggle" @click.stop="toggleStar(row.idx)" tabindex="-1">
-                <span v-if="starFlags[row.idx]">⭐</span>
-                <span v-else>-</span>
-              </span>
-              <!-- 行内“拓”按钮：只在未全局显示拓展词，且该单词有拓展词时出现 -->
-              <button
-                v-if="
-                  !showExtensions &&
-                  row.item.extensions &&
-                  row.item.extensions.length
-                "
-                :class="['ext-inline-btn', { active: activeExtRow === row.idx }]"
-                @mousedown.prevent="handleExtMouseDown(row.idx)"
-                tabindex="-1"
-              >
-                拓
-              </button>
+              <!-- 英语：第一行 单词+⭐，第二行 音标+拓 -->
+              <template v-if="lang === 'EN'">
+                <div class="word-main">
+                  <div class="word-row">
+                    <span class="word-text" @click="speak(row.item.word)">{{ row.item.word }}</span>
+                    <span class="star-toggle" @click.stop="toggleStar(row.idx)" tabindex="-1">
+                      <span v-if="starFlags[row.idx]">⭐</span>
+                      <span v-else>-</span>
+                    </span>
+                  </div>
+
+                  <div v-if="row.item.phonetic" class="word-row word-phonetic-row">
+                    <span class="word-phonetic">
+                      {{ row.item.phonetic }}
+                    </span>
+                    <button
+                      v-if="
+                        !showExtensions &&
+                        row.item.extensions &&
+                        row.item.extensions.length
+                      "
+                      :class="['ext-inline-btn', { active: activeExtRow === row.idx }]"
+                      @mousedown.prevent="handleExtMouseDown(row.idx)"
+                      tabindex="-1"
+                    >
+                      拓
+                    </button>
+                  </div>
+                </div>
+              </template>
+
+              <!-- 韩语：一行显示 单词+⭐+拓 -->
+              <template v-else>
+                <span class="word-text" @click="speak(row.item.word)">{{ row.item.word }}</span>
+                <span class="star-toggle" @click.stop="toggleStar(row.idx)" tabindex="-1">
+                  <span v-if="starFlags[row.idx]">⭐</span>
+                  <span v-else>-</span>
+                </span>
+                <button
+                  v-if="
+                    !showExtensions &&
+                    row.item.extensions &&
+                    row.item.extensions.length
+                  "
+                  :class="['ext-inline-btn', { active: activeExtRow === row.idx }]"
+                  @mousedown.prevent="handleExtMouseDown(row.idx)"
+                  tabindex="-1"
+                >
+                  拓
+                </button>
+              </template>
             </template>
           </td>
           <td v-else class="word-hidden">---</td>
@@ -185,7 +218,7 @@
               <div class="edit-area">
                 <span
                   class="chinese"
-                  v-html="row.item.meaning.replace(/<br\s*\/?>/g, '<br>')"
+                  v-html="formatMeaning(row.item.meaning)"
                 ></span>
                 <button
                   v-if="!editIndex[row.idx]"
@@ -342,7 +375,7 @@
       </tbody>
     </table>
 
-    <!-- 回到顶部按钮：和单词列表页一致，靠在表格右侧 -->
+    <!-- 回到顶部按钮：靠在表格右侧 -->
     <button
       v-if="showBackToTop"
       class="back-top-btn"
@@ -423,9 +456,9 @@ const editIndex = ref([])
 const editInput = ref([])
 const editMsg = ref([])
 
-const getHardWordsByDay = async (username, day, lang) => {
+const getHardWordsByDay = async (username, day, langCode) => {
   const resp = await fetch(
-    `/api/hard-words/${encodeURIComponent(username)}/day/${day}?lang=${lang}`
+    `/api/hard-words/${encodeURIComponent(username)}/day/${day}?lang=${langCode}`
   )
   if (!resp.ok) {
     throw new Error('fetch hard words failed')
@@ -447,10 +480,26 @@ const fetchWords = async () => {
     const data = await getHardWordsByDay(username, day.value, lang.value)
     words.value = (Array.isArray(data) ? data : [])
       .sort((a, b) => a.id - b.id)
-      .map((w) => ({
-        ...w,
-        extensions: Array.isArray(w.extensions) ? w.extensions : []
-      }))
+      .map((w) => {
+        let displayWord = w.word
+        let phonetic = ''
+
+        // 只在英语模式下从 word 中拆出音标
+        if (lang.value === 'EN' && typeof w.word === 'string') {
+          const idx = w.word.indexOf('[')
+          if (idx > -1) {
+            displayWord = w.word.slice(0, idx).trim()
+            phonetic = w.word.slice(idx).trim()
+          }
+        }
+
+        return {
+          ...w,
+          word: displayWord,
+          phonetic,
+          extensions: Array.isArray(w.extensions) ? w.extensions : []
+        }
+      })
     starFlags.value = words.value.map((w) => w.isStar === 1)
     resetState()
     updateBackToTopVisibility()
@@ -528,7 +577,6 @@ function toggleExtensions() {
   if (showExtensions.value) {
     activeExtRow.value = null
   }
-  // 拓展列宽度变化，重新计算回到顶部按钮位置
   if (showBackToTop.value) {
     nextTick(() => {
       updateBackTopPosition()
@@ -579,10 +627,7 @@ function updateBackTopPosition() {
   const rect = table.getBoundingClientRect()
   const viewportWidth = window.innerWidth || document.documentElement.clientWidth
 
-  // 表格右边缘往外 8px
   let left = rect.right + 8
-
-  // 防止按钮跑出屏幕右侧
   const buttonWidth = 110
   const maxLeft = viewportWidth - buttonWidth - 8
   if (left > maxLeft) {
@@ -768,6 +813,26 @@ async function saveEdit(idx) {
   }
 }
 
+// 中文多词性分行显示
+function formatMeaning(meaning) {
+  if (!meaning) return ''
+
+  let s = meaning.replace(/<br\s*\/?>/g, '<br>')
+
+  const posPattern = /(n\.|v\.|vi\.|vt\.|adj\.|adv\.|prep\.|conj\.|pron\.)/g
+  let isFirst = true
+
+  s = s.replace(posPattern, (match) => {
+    if (isFirst) {
+      isFirst = false
+      return match
+    }
+    return '<br>' + match
+  })
+
+  return s
+}
+
 // 移除顽固单词
 async function removeHard(idx) {
   const username = localStorage.getItem('username') || ''
@@ -881,6 +946,26 @@ td.chinese-hidden {
   cursor: default;
 }
 
+.word-main {
+  display: inline-block;
+}
+
+.word-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.word-phonetic-row {
+  margin-top: 2px;
+}
+
+.word-phonetic {
+  display: block;
+  font-size: 12px;
+  color: #b0bec5;
+}
+
 .word-text {
   color: #0af;
   text-decoration: underline;
@@ -989,7 +1074,7 @@ button.toggle-btn:hover {
   background: #d00;
 }
 
-/* 星标：可点击文本，外观跟普通文本类似，不改颜色/下划线，只改鼠标形状 */
+/* 星标 */
 .star-toggle {
   margin-left: 8px;
   cursor: pointer;
@@ -1167,7 +1252,7 @@ button.toggle-btn:hover {
   cursor: pointer;
 }
 
-/* 行内“拓”按钮（和单词列表页一致） */
+/* 行内“拓”按钮 */
 .ext-inline-btn {
   margin-left: 6px;
   padding: 2px 8px;
@@ -1188,7 +1273,7 @@ button.toggle-btn:hover {
   background: rgb(10, 130, 155);
 }
 
-/* 回到顶部按钮：和单词列表页一样 */
+/* 回到顶部按钮 */
 .back-top-btn {
   position: fixed;
   bottom: 32px;
