@@ -1,9 +1,13 @@
 <template>
-  <div class="word-list-root">
+  <div v-if="loading" class="global-msg">加载中...</div>
+  <div v-if="msg" class="global-msg">{{ msg }}</div>
+
+  <div class="word-list-root" :style="{ opacity: isLayoutReady ? 1 : 0 }">
+    
     <div class="top-btns">
-      <button @click="goHome" class="nav-btn">返回主页</button>
-      <button @click="goDaySelect" class="nav-btn">返回天数选择</button>
-      <button @click="goHardWords" class="nav-btn">顽固单词列表</button>
+      <button @click="goHome" class="nav-btn">主页</button>
+      <button @click="goDaySelect" class="nav-btn">天数选择</button>
+      <button @click="goHardWords" class="nav-btn">顽固单词</button>
       <button @click="goDictation" class="nav-btn">听写模式</button>
       <button @click="goWrongBook" class="nav-btn">错词本</button>
       <button @click="toggleExtensions" class="ext-btn">
@@ -39,7 +43,6 @@
               {{ chineseSpellMode ? '退出拼写' : '拼写' }}
             </button>
           </th>
-          <!-- 只有全局显示或有某一行按住拓按钮时才显示表头 -->
           <th v-if="showExtensions || activeExtRow !== null">拓展词</th>
         </tr>
       </thead>
@@ -47,7 +50,6 @@
         <tr v-for="(item, i) in words" :key="item.id">
           <td>{{ i + 1 }}</td>
 
-          <!-- 单词列 -->
           <td v-if="wordVisible || (wordSpellMode && wordSpelling[i])">
             <template v-if="wordSpellMode && wordSpelling[i]">
               <input class="spell-input" v-model="wordInput[i]" :disabled="skipWord[i]"
@@ -69,7 +71,6 @@
             </template>
 
             <template v-else>
-              <!-- 英语：单词 + 顽固 同一行，音标 + 拓 同一行 -->
               <template v-if="lang === 'EN'">
                 <div class="word-main">
                   <div class="word-row">
@@ -86,8 +87,6 @@
                     <span class="word-phonetic">
                       {{ item.phonetic }}
                     </span>
-                    <!-- “拓” 按住预览当前行拓展词 -->
-                    <!-- 只有在没有全局显示拓展词，且该单词有拓展词时才显示 -->
                     <button v-if="!showExtensions && item.extensions && item.extensions.length"
                       :class="['ext-inline-btn', { active: activeExtRow === i }]"
                       @mousedown.prevent="handleExtMouseDown(i)" tabindex="-1">
@@ -97,7 +96,6 @@
                 </div>
               </template>
 
-              <!-- 韩语：保持原来一行显示 -->
               <template v-else>
                 <span class="word-text" @click="speak(item.word)">{{ item.word }}</span>
                 <transition name="fadeout">
@@ -114,11 +112,9 @@
                 </button>
               </template>
             </template>
-
           </td>
           <td v-else class="word-hidden">---</td>
 
-          <!-- 中文列 -->
           <td v-if="chineseVisible || (chineseSpellMode && chineseSpelling[i])">
             <template v-if="chineseSpellMode && chineseSpelling[i]">
               <div class="edit-area">
@@ -170,11 +166,8 @@
           </td>
           <td v-else class="chinese-hidden">---</td>
 
-          <!-- 拓展词列：只有全局显示或有某一行正在预览时才显示整列 -->
           <td v-if="showExtensions || activeExtRow !== null" class="ext-col">
-            <!-- 只在：全局显示 或 当前行是 activeExtRow 时显示这一行的拓展内容 -->
             <template v-if="showExtensions || activeExtRow === i">
-              <!-- SENTENCE 例句 -->
               <div v-if="getExtensionsByType(item, 'SENTENCE').length" class="ext-group">
                 <span class="ext-tag ext-tag-sentence">例</span>
                 <div class="ext-list">
@@ -190,7 +183,6 @@
                 </div>
               </div>
 
-              <!-- SIMILAR 近义 -->
               <div v-if="getExtensionsByType(item, 'SIMILAR').length" class="ext-group">
                 <span class="ext-tag ext-tag-similar">近</span>
                 <div class="ext-list">
@@ -203,7 +195,6 @@
                 </div>
               </div>
 
-              <!-- RELATED 关联词 -->
               <div v-if="getExtensionsByType(item, 'RELATED').length" class="ext-group">
                 <span class="ext-tag ext-tag-related">关</span>
                 <div class="ext-list">
@@ -216,7 +207,6 @@
                 </div>
               </div>
 
-              <!-- ANTONYM 反义词 -->
               <div v-if="getExtensionsByType(item, 'ANTONYM').length" class="ext-group">
                 <span class="ext-tag ext-tag-antonym">反</span>
                 <div class="ext-list">
@@ -229,7 +219,6 @@
                 </div>
               </div>
 
-              <!-- IDIOM 惯用语 -->
               <div v-if="getExtensionsByType(item, 'IDIOM').length" class="ext-group">
                 <span class="ext-tag ext-tag-idiom">惯</span>
                 <div class="ext-list">
@@ -259,10 +248,6 @@
       tabindex="-1">
       回到顶部
     </button>
-
-    <div v-if="loading" class="msg">加载中...</div>
-
-    <div v-if="msg" class="msg">{{ msg }}</div>
   </div>
 </template>
 
@@ -319,6 +304,9 @@ const showExtensions = ref(false)
 const showBackToTop = ref(false)
 const backTopLeft = ref(0)
 
+// 核心修改：移除 topBtnsWidth，改用 isLayoutReady 控制整体显示
+const isLayoutReady = ref(false)
+
 // 当前按住“拓”按钮预览拓展词的行索引
 const activeExtRow = ref(null)
 
@@ -347,9 +335,43 @@ const editMsg = ref([]) // 保存消息
 const hardList = ref([])
 const hardFade = ref([]) // 哪些索引在做fade动画
 
+// 核心修改：只负责计算回到顶部按钮，并负责将页面设为可见
+async function updateLayout() {
+  // 注意：不再需要计算 topBtnsWidth，因为 CSS fit-content 自动解决了
+  const table = document.querySelector('.word-list-root table')
+  if (!table) {
+    backTopLeft.value = 0
+    return
+  }
+
+  // 计算回到顶部按钮位置（紧贴表格右侧）
+  const rect = table.getBoundingClientRect()
+  backTopLeft.value = rect.right + 8
+  
+  // 核心修改：标记布局已就绪，显示页面
+  setTimeout(() => {
+    isLayoutReady.value = true
+  }, 50)
+}
+
+function updateBackTopPosition() {
+  const table = document.querySelector('.word-list-root table')
+  if (!table || !showBackToTop.value) {
+    backTopLeft.value = 0
+    return
+  }
+
+  const rect = table.getBoundingClientRect()
+  backTopLeft.value = rect.right + 8
+}
+
 const fetchWords = async () => {
   loading.value = true
   msg.value = ''
+  
+  // 核心修改：开始加载数据时，先隐藏内容，防止用户看到跳动
+  isLayoutReady.value = false
+  
   try {
     if (!bookId.value) {
       router.push('/book-select')
@@ -391,6 +413,11 @@ const fetchWords = async () => {
     updateBackToTopVisibility()
   }
   loading.value = false
+
+  // 核心修改：数据渲染后，计算布局并显示
+  nextTick(() => {
+    updateLayout()
+  })
 }
 
 // 获取当前语言下的顽固单词
@@ -455,16 +482,12 @@ function toggleChineseSpell() {
 }
 function toggleExtensions() {
   showExtensions.value = !showExtensions.value
-  // 顶部按钮一旦打开全局显示，就不需要行级预览
   if (showExtensions.value) {
     activeExtRow.value = null
   }
-  // 拓展列显示状态变化，表格宽度会变，重新测量按钮位置
-  if (showBackToTop.value) {
-    nextTick(() => {
-      updateBackTopPosition()
-    })
-  }
+  nextTick(() => {
+    updateLayout()
+  })
 }
 
 // 回到顶部
@@ -475,36 +498,15 @@ function scrollToTop() {
 // 根据单词数量控制按钮是否出现
 function updateBackToTopVisibility() {
   showBackToTop.value = words.value.length > 20
-  if (showBackToTop.value) {
-    // 等 DOM 更新完再测量表格宽度
-    nextTick(() => {
-      updateBackTopPosition()
-    })
-  }
 }
 
-// 计算“回到顶部”按钮距离右侧的距离，让它紧贴表格最右边那一列
-function updateBackTopPosition() {
-  const table = document.querySelector('.word-list-root table')
-  if (!table) {
-    backTopLeft.value = 0
-    return
+
+// 窗口尺寸变化时重新计算布局
+function handleResize() {
+  // 核心修改：如果页面已经显示了，resize只需要调整回到顶部按钮的位置
+  if (isLayoutReady.value) {
+    updateBackTopPosition()
   }
-
-  const rect = table.getBoundingClientRect()
-  const viewportWidth = window.innerWidth || document.documentElement.clientWidth
-
-  // 预期位置：表格右边缘往外 8px，让按钮“贴在最右边边界外”
-  let left = rect.right + 8
-
-  // 防止按钮跑出屏幕右侧，估一个按钮宽度
-  const buttonWidth = 110
-  const maxLeft = viewportWidth - buttonWidth - 8
-  if (left > maxLeft) {
-    left = maxLeft
-  }
-
-  backTopLeft.value = left
 }
 
 function focusInput(type, idx) {
@@ -642,7 +644,6 @@ function speak(text) {
 
 // ===== “拓” 按住预览拓展词（使用全局 mouseup，避免鼠标松开事件丢失） =====
 function handleExtMouseDown(idx) {
-  // 有全局显示时，不应该按行预览
   if (showExtensions.value) return
   activeExtRow.value = idx
   window.addEventListener('mouseup', handleExtMouseUp)
@@ -728,14 +729,11 @@ async function saveEdit(idx) {
 function formatMeaning(meaning) {
   if (!meaning) return ''
 
-  // 先统一已有 <br>
   let s = meaning.replace(/<br\s*\/?>/g, '<br>')
 
-  // 需要识别的词性缩写
   const posPattern = /(n\.|v\.|vi\.|vt\.|adj\.|adv\.|prep\.|conj\.|pron\.|auxv\.)/g
   let isFirst = true
 
-  // 从第二个词性开始，前面强制加 <br>
   s = s.replace(posPattern, (match) => {
     if (isFirst) {
       isFirst = false
@@ -747,7 +745,6 @@ function formatMeaning(meaning) {
   return s
 }
 
-
 // 路由参数变化时，重新加载该天数据
 watch(
   () => route.params.day,
@@ -757,19 +754,56 @@ watch(
   }
 )
 
-onMounted(fetchWords)
+onMounted(() => {
+  fetchWords()
+  window.addEventListener('resize', handleResize)
+})
 
 onBeforeUnmount(() => {
   window.removeEventListener('mouseup', handleExtMouseUp)
+  window.removeEventListener('resize', handleResize)
 })
 </script>
 
 <style scoped>
+.word-list-root {
+  /* 核心修改：
+    width: fit-content 让容器自动根据表格内容调整宽度
+    配合 margin: auto 保持居中
+  */
+  width: -moz-fit-content;
+  width: fit-content;
+  margin: 36px auto 0 auto;
+  padding: 0 0 36px 0;
+  color: var(--text-color);
+  
+  /* 增加过渡效果，当透明度变化时更平滑 */
+  transition: opacity 0.3s ease-in-out;
+  /* 最小宽度防止初始渲染过于窄小 */
+  min-width: 600px;
+}
+
 .top-btns {
   display: flex;
-  gap: 18px;
-  margin-bottom: 22px;
+  flex-wrap: wrap;
+  gap: 10px; /* 稍微减小间距，更容易排版 */
   margin-top: 10px;
+  margin-bottom: 22px;
+  justify-content: flex-start;
+
+  /* --- 关键修改开始 --- */
+  /* 1. 告诉父容器：计算总宽度时别管我，我不占空间 (width: 0) */
+  width: 0; 
+  /* 2. 告诉浏览器：实际渲染时，我要占满父容器给我的 100% 空间 */
+  min-width: 100%; 
+  /* --- 关键修改结束 --- */
+}
+
+.global-msg {
+  text-align: center;
+  margin-top: 50px;
+  color: #ffae00;
+  font-size: 1.2rem;
 }
 
 .nav-btn {
@@ -788,13 +822,6 @@ onBeforeUnmount(() => {
   background: #256fff;
 }
 
-.word-list-root {
-  max-width: 1000px;
-  margin: 36px auto 0 auto;
-  padding: 0 0 36px 0;
-  color: var(--text-color);
-}
-
 h1 {
   color: var(--text-color);
   font-size: 2rem;
@@ -805,7 +832,7 @@ h1 {
 
 table {
   border-collapse: collapse;
-  width: 100%;
+  max-width: 100%;
   background: var(--main-bg);
   margin-bottom: 12px;
 }
@@ -837,8 +864,6 @@ td.chinese-hidden {
 .word-phonetic-row {
   margin-top: 2px;
 }
-
-
 
 .word-phonetic {
   display: block;
@@ -1075,13 +1100,7 @@ button.toggle-btn:hover {
   margin-top: 3px;
 }
 
-.msg {
-  margin-top: 14px;
-  color: #ffae00;
-}
-
 .ext-btn {
-  margin-left: auto;
   padding: 6px 18px;
   border-radius: 7px;
   border: 1px solid #1e90ff;
@@ -1176,7 +1195,6 @@ button.toggle-btn:hover {
   position: fixed;
   bottom: 32px;
   left: 0;
-  /* 实际水平位置由内联 :style 动态控制 */
   padding: 6px 14px;
   border-radius: 16px;
   border: none;
