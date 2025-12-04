@@ -4,6 +4,8 @@
       <button @click="goHome" class="nav-btn">返回主页</button>
       <button @click="goDaySelect" class="nav-btn">返回天数选择</button>
       <button @click="goHardWords" class="nav-btn">顽固单词列表</button>
+      <button @click="goDictation" class="nav-btn">听写模式</button>
+      <button @click="goWrongBook" class="nav-btn">错词本</button>
       <button @click="toggleExtensions" class="ext-btn">
         {{ showExtensions ? '隐藏拓展词' : '显示拓展词' }}
       </button>
@@ -279,6 +281,24 @@ function goHardWords() {
   router.push({
     path: '/hard-words',
     query: { day: day.value, lang: lang.value }
+  })
+}
+
+function goDictation() {
+  router.push({
+    path: '/dictation',
+    query: {
+      day: day.value,
+      lang: lang.value,
+      bookId: bookId.value || ''
+    }
+  })
+}
+
+function goWrongBook() {
+  router.push({
+    path: '/wrongbook',
+    query: { lang: lang.value }
   })
 }
 

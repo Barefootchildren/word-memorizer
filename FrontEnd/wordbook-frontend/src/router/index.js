@@ -13,6 +13,8 @@ import LangSelect from '../views/LangSelect.vue'   // 新增：语言选择页
 import BookSelect from '../views/BookSelect.vue'
 import DictationDemo from '../demos/DictationDemo.vue'
 import WordDictationDemo from '../demos/WordDictationDemo.vue'
+import DictationMode from '../views/DictationMode.vue'
+import WrongBook from '../views/WrongBook.vue'
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -26,6 +28,8 @@ const routes = [
   { path: '/hard-words', component: HardWord },
   { path: '/review-records', component: ReviewRecord },
   { path: '/profile', component: Profile },
+  { path: '/dictation', component: DictationMode },
+  { path: '/wrongbook', component: WrongBook },
   { path: '/:pathMatch(.*)*', component: NotFound },
   {
   path: '/demo',

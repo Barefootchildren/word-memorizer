@@ -56,6 +56,25 @@ create table hard_word
 create index word_id
     on hard_word (word_id);
 
+create table wrong_word
+(
+    id         int auto_increment
+        primary key,
+    user_id    int       default 1 null,
+    word_id    int                  not null,
+    created_at datetime default CURRENT_TIMESTAMP null,
+    constraint fk_wrong_word_user
+        foreign key (user_id) references user (id)
+            on delete set null,
+    constraint fk_wrong_word_word
+        foreign key (word_id) references word (id)
+            on delete cascade,
+    constraint uniq_wrong_user_word
+        unique (user_id, word_id)
+);
+
+create index idx_wrong_word_word_id on wrong_word (word_id);
+
 create table review_record
 (
     id           int auto_increment

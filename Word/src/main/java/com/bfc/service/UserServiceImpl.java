@@ -5,6 +5,8 @@ import com.bfc.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public class UserServiceImpl {
 
@@ -35,4 +37,8 @@ public class UserServiceImpl {
     }
 
     // 你还可以扩展更多方法，比如删除用户、修改用户信息等
+
+    public Optional<User> findById(Integer id) {
+        return userRepository.findById(id);
+    }
 }
