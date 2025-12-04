@@ -11,6 +11,8 @@ import Profile from '../views/Profile.vue'
 import NotFound from '../views/NotFound.vue'
 import LangSelect from '../views/LangSelect.vue'   // 新增：语言选择页
 import BookSelect from '../views/BookSelect.vue'
+import DictationDemo from '../demos/DictationDemo.vue'
+import WordDictationDemo from '../demos/WordDictationDemo.vue'
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -28,8 +30,14 @@ const routes = [
   {
   path: '/demo',
   name: 'Demo',
-  component: () => import('../views/WordListDemo.vue')
-}
+  component: () => import('../demos/WordListDemo.vue')
+},
+{
+  path: '/demo2',
+  component: DictationDemo
+},
+{path:'/demo3',component:WordDictationDemo}
+
 ]
 
 const router = createRouter({
